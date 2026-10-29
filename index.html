@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<!-- Documento principal de la aplicación de optimización de rutas. -->
+<html lang="es">
+<head>
+  <!-- Configuración básica para caracteres españoles y diseño adaptable. -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Simulador de algoritmo genético para optimización de rutas de entrega.">
+  <title>RouteLab | Algoritmo Genético</title>
+  <!-- Tipografías usadas por la interfaz: títulos, subtítulos y texto general. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Hoja de estilos propia y librería externa para dibujar las gráficas. -->
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- Contenedor general que organiza la barra lateral y el contenido principal. -->
+  <div class="app-shell">
+    <!-- Barra lateral con la identidad visual y parámetros del algoritmo. -->
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">R</span><div><strong>RouteLab</strong><small>OPTIMIZACIÓN LOGÍSTICA</small></div></div>
+      <!-- Nombre y resumen del problema que se está resolviendo. -->
+      <div class="side-label">PROYECTO</div>
+      <div class="side-project"><span class="project-icon">↗</span><div><strong>Rutas de entrega</strong><small>Problema 01 · AG</small></div></div>
+      <!-- Valores configurados para la ejecución del algoritmo genético. -->
+      <div class="side-label">PARÁMETROS DEL MODELO</div>
+      <div class="parameter-list">
+        <div><span>Población</span><strong>1.000 individuos</strong></div>
+        <div><span>Elitismo</span><strong>2 individuos</strong></div>
+        <div><span>Selección</span><strong>Torneo P = 2</strong></div>
+        <div><span>Cruce</span><strong>90% · 1 punto</strong></div>
+        <div><span>Mutación</span><strong>2% · inserción de 1 gen</strong></div>
+        <div><span>Parada</span><strong>Fitness &lt; 0,01</strong></div>
+        <div><span>Flota</span><strong>3 camiones · 12 u. c/u</strong></div>
+      </div>
+      <!-- Aclara que las ubicaciones de los clientes son datos simulados. -->
+      <div class="sidebar-note"><span class="status-dot"></span><div><strong>Modelo de demostración</strong><small>Clientes y coordenadas generados localmente.</small></div></div>
+      <div class="sidebar-footer">ALGORITMOS GENÉTICOS · 2026</div>
+    </aside>
+
+    <!-- Área central: controles de ejecución y resultados del algoritmo. -->
+    <main class="main-content">
+      <!-- Encabezado y botón que inicia una nueva simulación. -->
+      <header class="topbar">
+        <div><div class="eyebrow">CENTRO DE EXPERIMENTACIÓN</div><h1>Optimización de rutas</h1><p class="subtitle">Encuentra rutas eficientes para una flota de camiones, respetando sus restricciones.</p></div>
+        <button id="btn-iniciar" class="primary-button"><span>▶</span> Ejecutar algoritmo</button>
+      </header>
+
+      <!-- Explicación breve de la función objetivo y las restricciones. -->
+      <section class="intro-strip">
+        <div class="intro-icon">✦</div>
+        <div><strong>Objetivo del modelo</strong><p>Minimizar la distancia total y el tiempo de entrega. Las rutas que incumplen la capacidad o el límite de trabajo reciben una penalización en su función de aptitud.</p></div>
+      </section>
+
+      <!-- Mensajes de estado accesibles mientras se ejecuta el algoritmo. -->
+      <section id="estado-ejecucion" class="run-status" aria-live="polite">Listo para ejecutar. Pulsa “Ejecutar algoritmo” para iniciar la simulación.</section>
+
+      <!-- Se muestra después de ejecutar y contiene todos los resultados. -->
+      <section id="resultados" class="results-section oculto">
+        <!-- Indicadores resumen: aptitud, distancia, tiempo y generaciones. -->
+        <div class="section-heading"><div><div class="eyebrow">RESUMEN DE EJECUCIÓN</div><h2>Indicadores principales</h2></div><span id="estado-parada" class="pill">Pendiente</span></div>
+        <div class="metrics-grid">
+          <article class="metric-card"><div class="metric-label">Mejor costo / fitness</div><div id="mejor-fitness" class="metric-value">—</div><div class="metric-foot">Menor es mejor</div></article>
+          <article class="metric-card"><div class="metric-label">Distancia de la ruta</div><div id="mejor-distancia" class="metric-value">—</div><div class="metric-foot">Unidades de distancia</div></article>
+          <article class="metric-card"><div class="metric-label">Tiempo estimado</div><div id="mejor-tiempo" class="metric-value">—</div><div class="metric-foot">Viaje + servicio</div></article>
+          <article class="metric-card"><div class="metric-label">Generaciones</div><div id="generaciones-ejecutadas" class="metric-value">—</div><div class="metric-foot">Hasta parada o límite</div></article>
+        </div>
+
+        <!-- Rutas de la solución ganadora y evolución del mejor fitness. -->
+        <div class="content-grid">
+          <article class="panel route-panel">
+            <div class="panel-heading"><div><h2>Mejor ruta encontrada</h2><p>Orden de visita del camión</p></div><span class="mini-tag">MEJOR INDIVIDUO</span></div>
+            <div id="ruta-visual" class="route-sequence"></div>
+            <div class="route-details">
+              <div><span>Demanda / capacidad de flota</span><strong id="mejor-demanda">—</strong></div>
+              <div><span>Camiones utilizados</span><strong id="capacidad-camion">—</strong></div>
+              <div><span>Restricciones</span><strong id="estado-restricciones">—</strong></div>
+            </div>
+          </article>
+          <!-- Gráfica que compara el mejor fitness con el promedio poblacional. -->
+          <article class="panel chart-panel">
+            <div class="panel-heading"><div><h2>Convergencia del algoritmo</h2><p>Evolución del costo por generación</p></div></div>
+            <div class="chart-wrap"><canvas id="graficaFitness"></canvas></div>
+          </article>
+        </div>
+
+        <article class="panel chart-panel">
+          <div class="panel-heading"><div><h2>Comportamiento de la población</h2><p>Comparación entre mejor y promedio de fitness</p></div></div>
+          <div class="chart-wrap chart-wrap-short"><canvas id="graficaPromedio"></canvas></div>
+        </article>
+
+        <!-- Interpretación de resultados y mensaje sobre parada/restricciones. -->
+        <article class="panel">
+          <div class="panel-heading"><div><h2>Análisis de resultados y convergencia</h2><p>Interpretación automática de esta ejecución</p></div></div>
+          <div id="analisis-texto" class="analysis-copy"></div>
+          <div id="analisis-errores" class="error-note"></div>
+        </article>
+
+        <!-- Tablas paginadas para inspeccionar las poblaciones inicial y final. -->
+        <div class="section-heading table-heading"><div><div class="eyebrow">EVOLUCIÓN GENÉTICA</div><h2>Individuos de la población</h2></div><div class="table-controls"><label for="tamano-pagina">Filas por tabla</label><select id="tamano-pagina"><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option><option value="1000">1000</option></select></div></div>
+        <div class="population-grid">
+          <article class="panel population-panel"><div class="panel-heading"><div><h2>1. Población inicial</h2><p id="resumen-inicial">Antes de evolucionar</p></div></div><div class="table-scroll"><table><thead><tr><th>#</th><th>Cromosoma / rutas asignadas</th><th>Distancia total</th><th>Tiempo total</th><th>Fitness</th></tr></thead><tbody id="poblacion-inicial"></tbody></table></div><div id="paginacion-inicial" class="pagination"></div></article>
+          <article class="panel population-panel"><div class="panel-heading"><div><h2>2. Población final</h2><p id="resumen-final">Después de evolucionar</p></div></div><div class="table-scroll"><table><thead><tr><th>#</th><th>Cromosoma / rutas asignadas</th><th>Distancia total</th><th>Tiempo total</th><th>Fitness</th></tr></thead><tbody id="poblacion-final"></tbody></table></div><div id="paginacion-final" class="pagination"></div></article>
+        </div>
+        <footer class="page-footer">RouteLab · Resultados generados en el navegador · Los datos son simulados y no representan una operación logística real.</footer>
+      </section>
+    </main>
+  </div>
+
+  <!-- Se cargan las dependencias en orden: configuración, modelo, operadores,
+       algoritmo, interfaz y finalmente el punto de entrada de la página. -->
+  <script src="js/config.js"></script>
+  <script src="js/problem.js"></script>
+  <script src="js/genetic-operators.js"></script>
+  <script src="js/genetic-algorithm.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
